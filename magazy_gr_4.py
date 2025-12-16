@@ -1,37 +1,52 @@
 import streamlit as st
 
-# Inicjalizacja listy produktów (będzie przechowywać nazwy produktów)
-product_list = []
+st.title("Prosta aplikacja magazynowa")
 
-# Funkcja do dodawania produktu
-def add_product(product_name):
+# Inicjalizacja magazynu w session_state
+if "products" not in st.session_state:
+    st.session_state.products = {}
+
+# --- Dodawanie produktu ---
+st.subheader("Dodaj produkt")
+
+product_name = st.text_input("Nazwa produktu")
+product_quantity = st.number_input(
+    "Ilość",
+    min_value=1,
+    step=1
+)
+
+if st.button("Dodaj produkt"):
     if product_name:
-        product_list.append(product_name)
-        st.success(f"Produkt '{product_name}' został dodany.")
+        if product_name in st.session_state.products:
+            st.session_state.products[product_name] += product_quantity
+        else:
+            st.session_state.products[product_name] = product_quantity
+
+        st.success(
+            f"Dodano produkt: {product_name} (ilość: {product_quantity})"
+        )
     else:
-        st.warning("Proszę podać nazwę produktu.")
+        st.warning("Podaj nazwę produktu.")
 
-# Funkcja do usuwania produktu
-def remove_product(product_name):
-    if product_name in product_list:
-        product_list.remove(product_name)
-        st.success(f"Produkt '{product_name}' został usunięty.")
+# --- Usuwanie produktu ---
+st.subheader("Usuń produkt")
+
+product_to_remove = st.text_input("Nazwa produktu do usunięcia")
+
+if st.button("Usuń produkt"):
+    if product_to_remove in st.session_state.products:
+        del st.session_state.products[product_to_remove]
+        st.success(f"Usunięto produkt: {product_to_remove}")
     else:
-        st.warning(f"Produkt '{product_name}' nie znajduje się na liście.")
+        st.warning("Taki produkt nie istnieje.")
 
-# Nagłówek
-st.title('Prosta aplikacja magazynowa')
+# --- Wyświetlanie magazynu ---
+st.subheader("Stan magazynu")
 
-# Pole do dodawania produktu
-add_product_name = st.text_input('Wpisz nazwę produktu do dodania:')
-if st.button('Dodaj produkt'):
-    add_product(add_product_name)
+if st.session_state.products:
+    for name, quantity in st.session_state.products.items():
+        st.write(f"- **{name}**: {quantity} szt.")
+else:
+    st.info("Magazyn jest pusty.")
 
-# Pole do usuwania produktu
-remove_product_name = st.text_input('Wpisz nazwę produktu do usunięcia:')
-if st.button('Usuń produkt'):
-    remove_product(remove_product_name)
-
-# Wyświetlenie aktualnej listy produktów
-st.subheader('Aktualna lista produktów w magazynie:')
-st.write(product_list)
