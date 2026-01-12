@@ -4,8 +4,10 @@ from supabase import create_client
 # Inicjalizacja połączenia
 @st.cache_resource
 def init_connection():
-    return create_client(st.secrets["https://beumgnxpoxgcvvqujcna.supabase.co"], st.secrets["beumgnxpoxgcvvqujcna"])
-
+    # Pobieramy wartości używając NAZW kluczy z pliku secrets, a nie samych adresów
+    url = st.secrets["https://beumgnxpoxgcvvqujcna.supabase.co"]
+    key = st.secrets["beumgnxpoxgcvvqujcna"]
+    return create_client(url, key)
 supabase = init_connection()
 
 st.title("Magazyn z Kategoriami")
