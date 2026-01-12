@@ -1,11 +1,17 @@
 import streamlit as st
 from supabase import create_client
 
-# ===== Supabase connection =====
-supabase = create_client(
-    st.secrets["SUPABASE_URL"],
-    st.secrets["SUPABASE_KEY"]
-)
+@st.cache_resource
+def init_connection():
+    try:
+        url = st.secrets["SUPABASE_URL"]
+        key = st.secrets["SUPABASE_KEY"]
+        return create_client(url, key)
+    except Exception as e:
+        st.error("Błąd konfiguracji! Sprawdź Secrets w Streamlit Cloud.")
+        st.stop()
+
+supabase = init_connection()
 
 # ===== Helper functions =====
 def get_products():
