@@ -1,13 +1,49 @@
 import streamlit as st
+from supabase import create_client
 
-st.title("Prosta aplikacja magazynowa")
+# ===== Supabase connection =====
+supabase = create_client(
+    st.secrets["SUPABASE_URL"],
+    st.secrets["SUPABASE_KEY"]
+)
 
-# Inicjalizacja magazynu w session_state
-if "products" not in st.session_state:
-    st.session_state.products = {}
+# ===== Helper functions =====
+def get_products():
+    response = supabase.table("products").select("*").order("name").execute()
+    return response.data
+
+
+def add_product(name, quantity):
+    existing = supabase.table("products") \
+        .select("*") \
+        .eq("name", name) \
+        .execute()
+
+    if existing.data:
+        new_quantity = existing.data[0]["quantity"] + quantity
+        supabase.table("products") \
+            .update({"quantity": new_quantity}) \
+            .eq("name", name) \
+            .execute()
+    else:
+        supabase.table("products").insert({
+            "name": name,
+            "quantity": quantity
+        }).execute()
+
+
+def remove_product(name):
+    supabase.table("products") \
+        .delete() \
+        .eq("name", name) \
+        .execute()
+
+
+# ===== UI =====
+st.title("📦 Prosta aplikacja magazynowa (Supabase)")
 
 # --- Dodawanie produktu ---
-st.subheader("Dodaj produkt")
+st.subheader("➕ Dodaj produkt")
 
 product_name = st.text_input("Nazwa produktu")
 product_quantity = st.number_input(
@@ -18,34 +54,32 @@ product_quantity = st.number_input(
 
 if st.button("Dodaj produkt"):
     if product_name:
-        if product_name in st.session_state.products:
-            st.session_state.products[product_name] += product_quantity
-        else:
-            st.session_state.products[product_name] = product_quantity
-
-        st.success(
-            f"Dodano produkt: {product_name} (ilość: {product_quantity})"
-        )
+        add_product(product_name, product_quantity)
+        st.success(f"Dodano produkt: {product_name}")
+        st.rerun()
     else:
         st.warning("Podaj nazwę produktu.")
 
 # --- Usuwanie produktu ---
-st.subheader("Usuń produkt")
+st.subheader("🗑️ Usuń produkt")
 
 product_to_remove = st.text_input("Nazwa produktu do usunięcia")
 
 if st.button("Usuń produkt"):
-    if product_to_remove in st.session_state.products:
-        del st.session_state.products[product_to_remove]
+    if product_to_remove:
+        remove_product(product_to_remove)
         st.success(f"Usunięto produkt: {product_to_remove}")
+        st.rerun()
     else:
-        st.warning("Taki produkt nie istnieje.")
+        st.warning("Podaj nazwę produktu.")
 
 # --- Wyświetlanie magazynu ---
-st.subheader("Stan magazynu")
+st.subheader("📊 Stan magazynu")
 
-if st.session_state.products:
-    for name, quantity in st.session_state.products.items():
-        st.write(f"- *{name}*: {quantity} szt.")
+products = get_products()
+
+if products:
+    for p in products:
+        st.write(f"- **{p['name']}**: {p['quantity']} szt.")
 else:
     st.info("Magazyn jest pusty.")
