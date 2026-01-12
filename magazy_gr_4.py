@@ -1,5 +1,4 @@
 import streamlit as st
-setx API_KEY beumgnxpoxgcvvqujcna
 st.title("Prosta aplikacja magazynowa")
 
 # Inicjalizacja magazynu w session_state
