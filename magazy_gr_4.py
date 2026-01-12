@@ -1,51 +1,56 @@
 import streamlit as st
-st.title("Prosta aplikacja magazynowa")
+from supabase import create_client
 
-# Inicjalizacja magazynu w session_state
-if "products" not in st.session_state:
-    st.session_state.products = {}
+# Inicjalizacja połączenia
+@st.cache_resource
+def init_connection():
+    return create_client(st.secrets["https://beumgnxpoxgcvvqujcna.supabase.co"], st.secrets["beumgnxpoxgcvvqujcna"])
 
-# --- Dodawanie produktu ---
-st.subheader("Dodaj produkt")
+supabase = init_connection()
 
-product_name = st.text_input("Nazwa produktu")
-product_quantity = st.number_input(
-    "Ilość",
-    min_value=1,
-    step=1
-)
+st.title("Magazyn z Kategoriami")
 
-if st.button("Dodaj produkt"):
-    if product_name:
-        if product_name in st.session_state.products:
-            st.session_state.products[product_name] += product_quantity
-        else:
-            st.session_state.products[product_name] = product_quantity
+# --- POBIERANIE KATEGORII DO SELECTBOXA ---
+def get_categories():
+    response = supabase.table("kategorie").select("id, nazwa").execute()
+    return {item['nazwa']: item['id'] for item in response.data}
 
-        st.success(
-            f"Dodano produkt: {product_name} (ilość: {product_quantity})"
-        )
-    else:
-        st.warning("Podaj nazwę produktu.")
+categories_dict = get_categories()
 
-# --- Usuwanie produktu ---
-st.subheader("Usuń produkt")
+# --- DODAWANIE PRODUKTU ---
+with st.expander("Dodaj nowy produkt"):
+    with st.form("add_product_form"):
+        nazwa = st.text_input("Nazwa produktu")
+        cena = st.number_input("Cena", min_value=0.0, format="%.2f")
+        liczba = st.number_input("Ilość (liczba)", min_value=0, step=1)
+        
+        # Wybór kategorii z listy pobranej z bazy
+        kat_nazwa = st.selectbox("Kategoria", options=list(categories_dict.keys()))
+        
+        submitted = st.form_submit_button("Dodaj do magazynu")
+        
+        if submitted:
+            new_product = {
+                "nazwa": nazwa,
+                "cena": cena,
+                "liczba": liczba,
+                "kategoria_id": categories_dict[kat_nazwa]
+            }
+            supabase.table("produkty").insert(new_product).execute()
+            st.success(f"Dodano: {nazwa}")
+            st.rerun()
 
-product_to_remove = st.text_input("Nazwa produktu do usunięcia")
+# --- WYŚWIETLANIE STANU ---
+st.subheader("Aktualny stan magazynu")
 
-if st.button("Usuń produkt"):
-    if product_to_remove in st.session_state.products:
-        del st.session_state.products[product_to_remove]
-        st.success(f"Usunięto produkt: {product_to_remove}")
-    else:
-        st.warning("Taki produkt nie istnieje.")
+# Pobieramy produkty razem z nazwami kategorii (join)
+response = supabase.table("produkty").select("nazwa, cena, liczba, kategorie(nazwa)").execute()
+data = response.data
 
-# --- Wyświetlanie magazynu ---
-st.subheader("Stan magazynu")
-
-if st.session_state.products:
-    for name, quantity in st.session_state.products.items():
-        st.write(f"- **{name}**: {quantity} szt.")
+if data:
+    for p in data:
+        # kategorie(nazwa) zwraca słownik, bo to relacja
+        kat = p.get('kategorie', {}).get('nazwa', 'Brak')
+        st.write(f"📦 **{p['nazwa']}** | Cena: {p['cena']} zł | Sztuk: {p['liczba']} | Kat: {kat}")
 else:
-    st.info("Magazyn jest pusty.")
-
+    st.info("Brak produktów w bazie.")
